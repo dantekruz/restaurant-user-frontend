@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -8,13 +8,10 @@ const Cart = () => {
   const [orderType, setOrderType] = useState('Dine In');
   const [showModal, setShowModal] = useState(false);
   const [instructions, setInstructions] = useState('');
+  const [activeItemId, setActiveItemId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
-  const [swipeX, setSwipeX] = useState(0);
-  const swipeRef = useRef(null);
-  const maxSwipe = 260;
 
-  // ALL hooks above — no early returns before this line
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
 
   const updateQty = (id, delta) => {
@@ -35,81 +32,31 @@ const Cart = () => {
   const grandTotal = itemTotal + deliveryCharge + taxes;
 
   const placeOrder = async () => {
-    if (cart.length === 0 || loading) return;
+    if (cart.length === 0) return;
     setLoading(true);
     try {
       const token = localStorage.getItem('userToken');
-      const items = cart.map(i => ({
-        menuItem: i._id,
-        name: i.name,
-        quantity: i.quantity,
-        price: i.price,
-        size: i.size || '14"'
-      }));
-      await axios.post('/api/orders', {
+      const items = cart.map(i => ({ menuItem: i._id, name: i.name, quantity: i.quantity, price: i.price, size: i.size || '14"', avgPrepTime: Number(i.avgPrepTime) || 0 }));
+      console.log('[Cart] items with avgPrepTime:', items.map(i => ({ name: i.name, avgPrepTime: i.avgPrepTime })));
+      await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/orders`, {
         items,
         orderType,
         userName: userInfo.name,
         userPhone: userInfo.phone,
         address: userInfo.address,
-        tableNumber: 1,
-        deliveryCharge,
-        grandTotal
+        tableNumber: 1
       }, { headers: { Authorization: `Bearer ${token}` } });
       localStorage.setItem('cart', '[]');
       setCart([]);
       setSuccess('Order placed successfully! 🎉');
       setTimeout(() => navigate('/orders'), 2000);
     } catch (err) {
-      alert('Failed to place order. Please try again.');
-      setSwipeX(0);
+      console.error('[Cart] Order failed:', err.response?.data || err.message);
+      alert(err.response?.data?.message || 'Failed to place order: ' + (err.message || 'Unknown error'));
     }
     setLoading(false);
   };
 
-  const handleDragStart = (e) => {
-    const startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
-    let completed = false;
-
-    const handleMove = (moveEvent) => {
-      const currentX = moveEvent.type === 'touchmove'
-        ? moveEvent.touches[0].clientX
-        : moveEvent.clientX;
-      const diff = Math.min(Math.max(currentX - startX, 0), maxSwipe);
-      setSwipeX(diff);
-
-      if (diff >= maxSwipe - 10 && !completed) {
-        completed = true;
-        cleanup();
-        handleComplete();
-      }
-    };
-
-    const handleUp = () => {
-      if (!completed) setSwipeX(0);
-      cleanup();
-    };
-
-    const cleanup = () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
-      window.removeEventListener('touchmove', handleMove);
-      window.removeEventListener('touchend', handleUp);
-    };
-
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
-    window.addEventListener('touchmove', handleMove);
-    window.addEventListener('touchend', handleUp);
-  };
-
-  const handleComplete = async () => {
-    setSwipeX(maxSwipe);
-    await placeOrder();
-    setSwipeX(0);
-  };
-
-  // Early returns AFTER all hooks
   if (success) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 16 }}>
@@ -147,7 +94,7 @@ const Cart = () => {
             {cart.map(item => (
               <div className="selected-item-card" key={item._id}>
                 {item.image
-                  ? <img className="selected-item-img" src={`http://localhost:5000${item.image}`} alt={item.name} />
+                  ? <img className="selected-item-img" src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${item.image}`} alt={item.name} />
                   : <div className="selected-item-img" style={{ background: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🍕</div>
                 }
                 <div className="selected-item-info">
@@ -161,7 +108,7 @@ const Cart = () => {
                       <button className="qty-btn" onClick={() => updateQty(item._id, 1)}>+</button>
                     </div>
                   </div>
-                  <span className="cooking-link" onClick={() => { setShowModal(true); }}>
+                  <span className="cooking-link" onClick={() => { setActiveItemId(item._id); setShowModal(true); }}>
                     Add cooking instructions (optional)
                   </span>
                 </div>
@@ -176,7 +123,7 @@ const Cart = () => {
 
             <div className="bill-summary">
               <div className="bill-row"><span>Item Total</span><span>₹{itemTotal}.00</span></div>
-              <div className="bill-row"><span className="delivery-underline">Delivery Charge</span><span>₹{deliveryCharge}</span></div>
+              <div className="bill-row"><span style={{ borderBottom: '1px dashed #ccc' }}>Delivery Charge</span><span>₹{deliveryCharge}</span></div>
               <div className="bill-row"><span>Taxes</span><span>₹{taxes}.00</span></div>
               <div className="bill-row grand"><span>Grand Total</span><span>₹{grandTotal}.00</span></div>
             </div>
@@ -194,20 +141,9 @@ const Cart = () => {
               </div>
             </div>
 
-            {/* Swipe to Order */}
-            <div className="swipe-btn-wrapper" ref={swipeRef}>
-              <div
-                className="swipe-circle"
-                onMouseDown={handleDragStart}
-                onTouchStart={handleDragStart}
-                style={{ transform: `translateX(${swipeX}px)`, transition: swipeX === 0 ? 'transform 0.3s ease' : 'none' }}
-              >
-                {loading ? '⏳' : '→'}
-              </div>
-              <span className="swipe-label" style={{ opacity: 1 - swipeX / maxSwipe }}>
-                Swipe to Order
-              </span>
-            </div>
+            <button className="place-order-btn" onClick={placeOrder} disabled={loading}>
+              {loading ? 'Placing Order...' : `Place Order · ₹${grandTotal}`}
+            </button>
           </>
         )}
       </div>
@@ -237,10 +173,18 @@ const Cart = () => {
 
       {/* Bottom Nav */}
       <div className="bottom-nav">
-        <button className="bottom-nav-item" onClick={() => navigate('/home')}><span className="bottom-nav-icon">🏠</span><span>Home</span></button>
-        <button className="bottom-nav-item active"><span className="bottom-nav-icon">🛒</span><span>Cart</span></button>
-        <button className="bottom-nav-item" onClick={() => navigate('/orders')}><span className="bottom-nav-icon">📋</span><span>Orders</span></button>
-        <button className="bottom-nav-item" onClick={() => { localStorage.clear(); navigate('/login'); }}><span className="bottom-nav-icon">👤</span><span>Logout</span></button>
+        <button className="bottom-nav-item" onClick={() => navigate('/home')}>
+          <span className="bottom-nav-icon">🏠</span><span>Home</span>
+        </button>
+        <button className="bottom-nav-item active">
+          <span className="bottom-nav-icon">🛒</span><span>Cart</span>
+        </button>
+        <button className="bottom-nav-item" onClick={() => navigate('/orders')}>
+          <span className="bottom-nav-icon">📋</span><span>Orders</span>
+        </button>
+        <button className="bottom-nav-item" onClick={() => { localStorage.clear(); navigate('/login'); }}>
+          <span className="bottom-nav-icon">👤</span><span>Logout</span>
+        </button>
       </div>
     </div>
   );
