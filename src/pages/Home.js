@@ -60,6 +60,11 @@ const Home = () => {
 
   const cartCount = cart.reduce((s, i) => s + (i.quantity || 0), 0);
 
+  const categoryIcon = (cat) => ({
+    'Burger': '🍔', 'Pizza': '🍕', 'Drink': '🥤',
+    'French fries': '🍟', 'Veggies': '🥗'
+  }[cat] || '🍽️');
+
   return (
     <div style={{ paddingBottom: 80 }}>
       <div className="user-header">
@@ -103,16 +108,23 @@ const Home = () => {
         <div className="food-grid">
           {filtered.map(item => (
             <div className="food-card" key={item._id} onClick={() => addToCart(item)}>
-              {item.image ? (
+              {item.image && item.image.trim() !== '' ? (
                 <img
                   className="food-card-img"
                   src={`${API}${item.image}`}
                   alt={item.name}
-                  onError={e => { e.target.style.display = 'none'; }}
+                  onError={e => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
                 />
-              ) : (
-                <div className="food-card-img-placeholder">🍕</div>
-              )}
+              ) : null}
+              <div
+                className="food-card-img-placeholder"
+                style={{ display: item.image && item.image.trim() !== '' ? 'none' : 'flex' }}
+              >
+                {categoryIcon(item.category)}
+              </div>
               <div className="food-card-body">
                 <div>
                   <div className="food-card-name">{item.name}</div>
