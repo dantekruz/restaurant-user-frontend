@@ -15,7 +15,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true); setError('');
     try {
-      const res = await axios.post('/api/auth/login', form);
+      const res = await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/login`, form);
       localStorage.setItem('userToken', res.data.token);
       localStorage.setItem('userInfo', JSON.stringify(res.data.user));
       navigate('/home');

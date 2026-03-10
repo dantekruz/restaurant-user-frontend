@@ -85,7 +85,7 @@ const Orders = () => {
   const fetchOrders = async () => {
     const token = localStorage.getItem('userToken');
     try {
-      const res = await axios.get('http://localhost:5000/api/orders/my', {
+      const res = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/orders/my`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setOrders(res.data);
@@ -112,7 +112,7 @@ const Orders = () => {
     const connect = () => {
       if (esRef.current) esRef.current.close();
       // Always use full URL for SSE — proxy doesn't work with EventSource
-      const es = new EventSource(`http://localhost:5000/api/orders/stream/${userId}`);
+      const es = new EventSource(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/orders/stream/${userId}`);
 
       es.onmessage = (e) => {
         try {
@@ -151,7 +151,7 @@ const Orders = () => {
     try {
       // Use full URL — React proxy doesn't reliably forward PUT requests
       await axios.put(
-        `http://localhost:5000/api/orders/received/${orderId}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/orders/received/${orderId}`,
         {},
         { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );

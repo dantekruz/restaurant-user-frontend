@@ -14,19 +14,19 @@ const ForgotPassword = () => {
 
   const sendOtp = async e => {
     e.preventDefault(); setLoading(true); setError('');
-    try { await axios.post('/api/auth/forgot-password', { email: form.email }); setStep(2); setSuccess('OTP sent!'); } catch (err) { setError(err.response?.data?.message || 'Error'); }
+    try { await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/forgot-password`, { email: form.email }); setStep(2); setSuccess('OTP sent!'); } catch (err) { setError(err.response?.data?.message || 'Error'); }
     setLoading(false);
   };
 
   const verifyOtp = async e => {
     e.preventDefault(); setLoading(true); setError('');
-    try { await axios.post('/api/auth/verify-otp', { email: form.email, otp: form.otp }); setStep(3); setSuccess(''); } catch (err) { setError(err.response?.data?.message || 'Invalid OTP'); }
+    try { await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/verify-otp`, { email: form.email, otp: form.otp }); setStep(3); setSuccess(''); } catch (err) { setError(err.response?.data?.message || 'Invalid OTP'); }
     setLoading(false);
   };
 
   const resetPwd = async e => {
     e.preventDefault(); setLoading(true); setError('');
-    try { await axios.post('/api/auth/reset-password', { email: form.email, otp: form.otp, newPassword: form.newPassword }); navigate('/login'); } catch (err) { setError(err.response?.data?.message || 'Error'); }
+    try { await axios.post(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/reset-password`, { email: form.email, otp: form.otp, newPassword: form.newPassword }); navigate('/login'); } catch (err) { setError(err.response?.data?.message || 'Error'); }
     setLoading(false);
   };
 
